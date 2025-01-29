@@ -5,9 +5,10 @@ type: "Bug"
 body:
   - type: textarea
     attributes:
-      label: Describe the bug / provide steps to reproduce it
-      description: A one line summary, and detailed reproduction steps
+      label: Summary
+      description: Describe the bug as well as provide steps to reproduce it
       value: |
+        <!-- Please insert a one line summary, describing the issue here -->
         Summary:
 
         <!-- Include all steps necessary to reproduce from a clean Zed installation. Be verbose -->
