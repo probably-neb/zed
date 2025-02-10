@@ -15786,6 +15786,59 @@ async fn test_rename_without_prepare(cx: &mut gpui::TestAppContext) {
     "});
 }
 
+#[gpui::test]
+async fn test_autoclose_tags(cx: &mut gpui::TestAppContext) {
+    init_test(cx, |_| {});
+
+    let mut cx = EditorTestContext::new(cx).await;
+
+    cx.set_state("<divˇ");
+    cx.update_editor(|e, window, cx| {
+        e.handle_input(">", window, cx);
+    });
+    cx.assert_editor_state("<div>ˇ</div>");
+
+    cx.set_state("ˇ");
+    cx.update_editor(|e, window, cx| {
+        e.handle_input("<div>", window, cx);
+    });
+    cx.assert_editor_state("<div>ˇ</div>");
+
+    cx.set_state("<diˇ");
+    cx.update_editor(|e, window, cx| {
+        e.handle_input("v>", window, cx);
+    });
+    cx.assert_editor_state("<div>ˇ</div>");
+
+    cx.set_state("<div/ˇ");
+    cx.update_editor(|e, window, cx| {
+        e.handle_input(">", window, cx);
+    });
+    cx.assert_editor_state("<div/>ˇ");
+
+    cx.set_state("<div attr=trueˇ");
+    cx.update_editor(|e, window, cx| {
+        e.handle_input(">", window, cx);
+    });
+    cx.assert_editor_state("<div attr=true>ˇ</div>");
+
+    cx.set_state("<divˇ</div>");
+    cx.update_editor(|e, window, cx| {
+        e.handle_input(">", window, cx);
+    });
+    cx.assert_editor_state("<div>ˇ</div>");
+
+    // cx.set_state("<\n\ndiv attr=trueˇ");
+    // cx.update_editor(|e, window, cx| {
+    //     e.handle_input("\n>", window, cx);
+    // });
+    // cx.assert_editor_state("<\n\ndiv attr=true\n>ˇ</div>");
+
+    // TODO:
+    // - Make selection handling more robust to newlines + autoindent (above test fails!) i.e. give selection_for a reason to exist
+    // - Test more complicated JSX tags
+}
+
 fn empty_range(row: usize, column: usize) -> Range<DisplayPoint> {
     let point = DisplayPoint::new(DisplayRow(row as u32), column as u32);
     point..point

@@ -2706,6 +2706,7 @@ impl Editor {
         let mut linked_edits = HashMap::<_, Vec<_>>::default();
         let mut new_selections = Vec::with_capacity(selections.len());
         let mut new_autoclose_regions = Vec::new();
+        let mut autoclose_tag_prediction = None;
         let snapshot = self.buffer.read(cx).read(cx);
 
         for (selection, autoclose_region) in
@@ -2899,6 +2900,39 @@ impl Editor {
                 }
             }
 
+            let should_autoclose_tags = true;
+
+            if should_autoclose_tags && selection.is_empty() {
+                if let Some(prediction) = dbg!(autoclose_tag::compute_autoclose_tag(
+                    &snapshot,
+                    selection.start,
+                    text.as_ref()
+                )) {
+                    new_selections.push(dbg!(autoclose_tag::selection_for(
+                        &prediction,
+                        &snapshot,
+                        selection.start,
+                        text.as_ref(),
+                        &selection,
+                    )));
+                    autoclose_tag_prediction = Some(prediction);
+                    continue;
+                }
+
+                // edits.extend(autoclose_tag::edits_for(
+                //     &tag,
+                //     &snapshot,
+                //     selection.start,
+                //     text.clone(),
+                // ));
+                // continue;
+                // dbg!(snapshot
+                //     .text_for_range(tag.tag_name_range)
+                //     .flat_map(|txt| txt.chars())
+                //     .collect::<String>());
+                // }
+            }
+
             // If not handling any auto-close operation, then just replace the selected
             // text with the given input and move the selection to the end of the
             // newly inserted text.
@@ -2951,6 +2985,16 @@ impl Editor {
                     buffer.edit(edits, None, cx);
                 })
             }
+            if let Some(autoclose_tag_prediction) = autoclose_tag_prediction {
+                this.buffer.update(cx, |buffer, cx| {
+                    let edits = autoclose_tag::edits_for(
+                        &autoclose_tag_prediction,
+                        &buffer.snapshot(cx),
+                        text.clone(),
+                    );
+                    buffer.edit(edits, this.autoindent_mode.clone(), cx);
+                });
+            }
             let new_anchor_selections = new_selections.iter().map(|e| &e.0);
             let new_selection_deltas = new_selections.iter().map(|e| e.1);
             let map = this.display_map.update(cx, |map, cx| map.snapshot(cx));
@@ -2995,7 +3039,7 @@ impl Editor {
 
             let had_active_inline_completion = this.has_active_inline_completion();
             this.change_selections_inner(Some(Autoscroll::fit()), false, window, cx, |s| {
-                s.select(new_selections)
+                s.select(dbg!(new_selections))
             });
 
             if !bracket_inserted {

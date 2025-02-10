@@ -1162,6 +1162,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "gpui",
+ "multi_buffer",
+ "rope",
+ "text",
  "ui",
  "util",
 ]
@@ -4029,6 +4032,7 @@ dependencies = [
  "aho-corasick",
  "anyhow",
  "assets",
+ "autoclose_tag",
  "chrono",
  "client",
  "clock",

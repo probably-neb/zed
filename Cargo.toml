@@ -216,6 +216,7 @@ assistant_tools = { path = "crates/assistant_tools" }
 audio = { path = "crates/audio" }
 auto_update = { path = "crates/auto_update" }
 auto_update_ui = { path = "crates/auto_update_ui" }
+autoclose_tag = { path = "crates/autoclose_tag" }
 breadcrumbs = { path = "crates/breadcrumbs" }
 call = { path = "crates/call" }
 channel = { path = "crates/channel" }
