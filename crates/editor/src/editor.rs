@@ -2911,7 +2911,7 @@ impl Editor {
                     new_selections.push(dbg!(autoclose_tag::selection_for(
                         &prediction,
                         &snapshot,
-                        selection.start,
+                        dbg!(selection.start),
                         text.as_ref(),
                         &selection,
                     )));

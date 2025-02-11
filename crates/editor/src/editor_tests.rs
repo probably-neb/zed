@@ -15786,47 +15786,34 @@ async fn test_rename_without_prepare(cx: &mut gpui::TestAppContext) {
     "});
 }
 
-#[gpui::test]
-async fn test_autoclose_tags(cx: &mut gpui::TestAppContext) {
-    init_test(cx, |_| {});
+mod autoclose_tags {
+    use super::*;
+    macro_rules! autoclose_tag_test {
+        ($test_name:ident = $initial:literal + $input:literal => $expected:literal) => {
+            #[gpui::test]
+            async fn $test_name(cx: &mut gpui::TestAppContext) {
+                init_test(cx, |_| {});
 
-    let mut cx = EditorTestContext::new(cx).await;
+                let mut cx = EditorTestContext::new(cx).await;
 
-    cx.set_state("<divˇ");
-    cx.update_editor(|e, window, cx| {
-        e.handle_input(">", window, cx);
-    });
-    cx.assert_editor_state("<div>ˇ</div>");
-
-    cx.set_state("ˇ");
-    cx.update_editor(|e, window, cx| {
-        e.handle_input("<div>", window, cx);
-    });
-    cx.assert_editor_state("<div>ˇ</div>");
-
-    cx.set_state("<diˇ");
-    cx.update_editor(|e, window, cx| {
-        e.handle_input("v>", window, cx);
-    });
-    cx.assert_editor_state("<div>ˇ</div>");
-
-    cx.set_state("<div/ˇ");
-    cx.update_editor(|e, window, cx| {
-        e.handle_input(">", window, cx);
-    });
-    cx.assert_editor_state("<div/>ˇ");
-
-    cx.set_state("<div attr=trueˇ");
-    cx.update_editor(|e, window, cx| {
-        e.handle_input(">", window, cx);
-    });
-    cx.assert_editor_state("<div attr=true>ˇ</div>");
-
-    cx.set_state("<divˇ</div>");
-    cx.update_editor(|e, window, cx| {
-        e.handle_input(">", window, cx);
-    });
-    cx.assert_editor_state("<div>ˇ</div>");
+                cx.set_state($initial);
+                cx.update_editor(|e, window, cx| {
+                    e.handle_input($input, window, cx);
+                });
+                cx.assert_editor_state($expected);
+            }
+        };
+    }
+    // macro_rules! check {
+    //         ($initial:literal + $input:literal => $expected:literal) => {
+    //             cx.set_state($initial);
+    //             cx.update_editor(|e, window, cx| {
+    //                 e.handle_input($input, window, cx);
+    //             });
+    //             cx.assert_editor_state($expected);
+    //         };
+    //     }
+    //
 
     // cx.set_state("<\n\ndiv attr=trueˇ");
     // cx.update_editor(|e, window, cx| {
@@ -15835,8 +15822,115 @@ async fn test_autoclose_tags(cx: &mut gpui::TestAppContext) {
     // cx.assert_editor_state("<\n\ndiv attr=true\n>ˇ</div>");
 
     // TODO:
-    // - Make selection handling more robust to newlines + autoindent (above test fails!) i.e. give selection_for a reason to exist
-    // - Test more complicated JSX tags
+
+    // completes in basic case
+    autoclose_tag_test!(
+        basic =
+        "<divˇ" + ">" => "<div>ˇ</div>"
+    );
+
+    // completes with entire tag name in input not buf
+    autoclose_tag_test!(
+        closes_full_tag_name_in_input =
+        "ˇ" + "<div>" => "<div>ˇ</div>"
+    );
+
+    // completes with tag name split between input and buf
+    autoclose_tag_test!(
+        closes_split_tag_name =
+        "<diˇ" + "v>" => "<div>ˇ</div>"
+    );
+
+    // does not complete self closing tag
+    autoclose_tag_test!(
+        ignores_self_closing =
+        "<div/ˇ" + ">" => "<div/>ˇ"
+    );
+
+    // completes (and identifies correct tag name) with attributes
+    autoclose_tag_test!(
+        closes_with_attributes =
+        "<div attr=trueˇ" + ">" => "<div attr=true>ˇ</div>"
+    );
+
+    autoclose_tag_test!(
+        handles_whitespace_in_open_tag_properly =
+        "<\n\n\tdiv ˇ" + "\n>" => "<\n\n\tdiv \n>ˇ</div>"
+    );
+
+    // doesn't complete if already closed
+    autoclose_tag_test!(
+        ignores_already_closed =
+        "<divˇ</div>" + ">" => "<div>ˇ</div>"
+    );
+
+    // doesn't complete if already closed and tag name split between input and buf
+    autoclose_tag_test!(
+        ignores_already_closed_split =
+        "<diˇ</div>" + "v>" => "<div>ˇ</div>"
+    );
+
+    // doesn't complete if already closed and closing tag has whitespace
+    autoclose_tag_test!(
+        ignores_closed_with_whitespace =
+        "<divˇ</\n \ndiv\n \n>" + ">" => "<div>ˇ</\n \ndiv\n \n>"
+    );
+
+    autoclose_tag_test!(
+        doesnt_close_closing_tag =
+        "</divˇ" + ">" => "</div>ˇ"
+    );
+
+    autoclose_tag_test!(
+        closes_with_trailing_text =
+        "<divˇfoobarbaz" + ">" => "<div>ˇ</div>foobarbaz"
+    );
+
+    autoclose_tag_test!(
+        closes_inner_tag =
+        "<foo><divˇ</foo>" + ">" => "<foo><div>ˇ</div></foo>"
+    );
+
+    // TODO
+    // autoclose_tag_test!(
+    //     closes_jsx_generic_tag =
+    //     "<Component<T> ˇ" + ">" => "<Component<T>>ˇ</Component>"
+    // );
+
+    autoclose_tag_test!(
+        closes_jsx_tag_with_gt_lt_in_expr =
+        "<Component attr={x < 1 && y > 2}ˇ" + ">" => "<Component attr={x < 1 && y > 2}>ˇ</Component>"
+    );
+
+    autoclose_tag_test!(
+        negation_doesnt_close_doctype =
+        "<!DOCTYPE htmlˇ" + ">" => "<!DOCTYPE html>ˇ"
+    );
+
+    autoclose_tag_test!(
+        negation_doesnt_close_cdata =
+        "<!CDATA[[foo]]ˇ" + ">" => "<!CDATA[[foo]]>ˇ"
+    );
+
+    autoclose_tag_test!(
+        negation_doesnt_close_html_comment =
+        "<!-- comment --ˇ" + ">" => "<!-- comment -->ˇ"
+    );
+
+    autoclose_tag_test!(
+        unmatch_braces_doesnt_close_tag_with_unclosed_braces =
+        "<div {></div><Component attr=x < 1 && y > 2}ˇ" + ">" => "<div {></div><Component attr=x < 1 && y > 2}>ˇ"
+    );
+
+    autoclose_tag_test!(
+        closes_tag_with_dash =
+        "<my-componentˇ" + ">" => "<my-component>ˇ</my-component>"
+    );
+
+    autoclose_tag_test!(
+        closes_tag_with_dot =
+        "<Component.fooˇ" + ">" => "<Component.foo>ˇ</Component.foo>"
+    );
 }
 
 fn empty_range(row: usize, column: usize) -> Range<DisplayPoint> {
